@@ -356,6 +356,50 @@ static int hddNeedsUpdate(item_list_t *itemList)
     return 1;
 }
 
+int hddGetHDLGameInfo(struct GameDataEntry *game, hdl_game_info_t *ginfo)
+{
+    int ret;
+
+    ret = hddReadSectors(game->lba, 2, IOBuffer);
+    if (ret == 0) {
+
+        hdl_apa_header *hdl_header = (hdl_apa_header *)IOBuffer;
+
+        strncpy(ginfo->partition_name, game->id, APA_IDMAX);
+        ginfo->partition_name[APA_IDMAX] = '\0';
+        strncpy(ginfo->name, hdl_header->gamename, HDL_GAME_NAME_MAX);
+        ginfo->name[HDL_GAME_NAME_MAX] = '\0';
+        strncpy(ginfo->startup, hdl_header->startup, sizeof(ginfo->startup) - 1);
+        ginfo->startup[sizeof(ginfo->startup) - 1] = '\0';
+        ginfo->hdl_compat_flags = hdl_header->hdl_compat_flags;
+        ginfo->ops2l_compat_flags = hdl_header->ops2l_compat_flags;
+        ginfo->dma_type = hdl_header->dma_type;
+        ginfo->dma_mode = hdl_header->dma_mode;
+        ginfo->layer_break = hdl_header->layer1_start;
+        ginfo->disctype = (u8)hdl_header->discType;
+        ginfo->start_sector = game->lba;
+        ginfo->total_size_in_kb = game->size * 2; // size * 2048 / 1024 = 2x
+    } else
+        ret = -1;
+
+    return ret;
+}
+
+int hddGetHDLGameInfoByPartName(const char* partition_name, hdl_game_info_t *ginfo)
+{
+    int res = 0;
+    struct GameDataEntry e;
+
+    memset(&e, 0, sizeof(e));
+    res = hddGetPartitionGDE(partition_name, &e);
+    if (res != 0)
+    {
+        return res;  
+    }
+    
+    return hddGetHDLGameInfo(&e, ginfo);
+}
+
 static int hddUpdateGameList(item_list_t *itemList)
 {
     hdl_games_list_t hddGamesNew;

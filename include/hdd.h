@@ -84,10 +84,40 @@ typedef struct
     u32 reserved[4];
 } pfs_inode_t;
 
+typedef struct // size = 1024
+{
+    u32 checksum; // HDL uses 0xdeadfeed magic here
+    u32 magic;
+    char gamename[160];
+    u8 hdl_compat_flags;
+    u8 ops2l_compat_flags;
+    u8 dma_type;
+    u8 dma_mode;
+    char startup[60];
+    u32 layer1_start;
+    u32 discType;
+    int num_partitions;
+    struct
+    {
+        u32 part_offset; // in MB
+        u32 data_start;  // in sectors
+        u32 part_size;   // in KB
+    } part_specs[65];
+} hdl_apa_header;
+
+struct GameDataEntry
+{
+    u32 lba, size;
+    struct GameDataEntry *next;
+    char id[APA_IDMAX + 1];
+};
+
 int hddReadSectors(u32 lba, u32 nsectors, void *buf);
 
 // Array should be APA_MAXSUB+1 entries.
 int hddGetPartitionInfo(const char *name, apa_sub_t *parts);
+
+int hddGetPartitionGDE(const char* name, struct GameDataEntry* out);
 
 // Array should be max entries.
 int hddGetFileBlockInfo(const char *name, const apa_sub_t *subs, pfs_blockinfo_t *blocks, int max);

@@ -57,4 +57,6 @@ int sbProbeISO9660_64(const char *path, base_game_info_t *game, u32 layer1_offse
 
 int sbLoadCheats(const char *path, const char *file);
 
+int getStartupFromISO(const char* fullpath, char* out_startup);
+
 #endif

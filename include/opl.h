@@ -241,4 +241,54 @@ BLURT output char blurttext[128];
     delay(10);
 #define BLURT snprintf(blurttext, sizeof(blurttext), "%s(%d)", blurttext, __LINE__);
 */
+
+typedef struct
+{
+    const char* bsd;
+    size_t bsd_len;
+
+    const char* bsdfs;
+    size_t bsdfs_len;
+
+    const char* dvd;
+    size_t dvd_len;
+
+    const char* mc0;
+    size_t mc0_len;
+
+    const char* mc1;
+    size_t mc1_len;
+
+    const char* elf;
+    size_t elf_len;
+
+    const char* mt;
+    size_t mt_len;
+
+    const char* gc;
+    size_t gc_len;
+
+    const char* gsm;
+    size_t gsm_len;
+
+    const char* oplpart;
+    size_t oplpart_len;
+    
+} neutrino_args_t;
+
+typedef struct
+{
+    int mode;
+    int bdm_type : 8;
+    int media_type : 8;
+    int logo : 8;
+    int dbc : 8;
+    int elf_passthru_argc;
+    char** elf_passthru_argv;
+    const char* opl_part_name;
+    const char* vmc0_path;
+    const char* vmc1_path;
+    const char* filename;
+}neutrino_config_t;
+
 #endif

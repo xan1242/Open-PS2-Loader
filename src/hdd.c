@@ -6,27 +6,6 @@
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
 
-typedef struct // size = 1024
-{
-    u32 checksum; // HDL uses 0xdeadfeed magic here
-    u32 magic;
-    char gamename[160];
-    u8 hdl_compat_flags;
-    u8 ops2l_compat_flags;
-    u8 dma_type;
-    u8 dma_mode;
-    char startup[60];
-    u32 layer1_start;
-    u32 discType;
-    int num_partitions;
-    struct
-    {
-        u32 part_offset; // in MB
-        u32 data_start;  // in sectors
-        u32 part_size;   // in KB
-    } part_specs[65];
-} hdl_apa_header;
-
 #define HDL_GAME_DATA_OFFSET 0x100000 // Sector 0x800 in the extended attribute area.
 #define HDL_FS_MAGIC         0x1337
 
@@ -133,41 +112,8 @@ static int hddWriteSectors(u32 lba, u32 nsectors, const void *buf)
 }
 
 //-------------------------------------------------------------------------
-struct GameDataEntry
-{
-    u32 lba, size;
-    struct GameDataEntry *next;
-    char id[APA_IDMAX + 1];
-};
 
-static int hddGetHDLGameInfo(struct GameDataEntry *game, hdl_game_info_t *ginfo)
-{
-    int ret;
 
-    ret = hddReadSectors(game->lba, 2, IOBuffer);
-    if (ret == 0) {
-
-        hdl_apa_header *hdl_header = (hdl_apa_header *)IOBuffer;
-
-        strncpy(ginfo->partition_name, game->id, APA_IDMAX);
-        ginfo->partition_name[APA_IDMAX] = '\0';
-        strncpy(ginfo->name, hdl_header->gamename, HDL_GAME_NAME_MAX);
-        ginfo->name[HDL_GAME_NAME_MAX] = '\0';
-        strncpy(ginfo->startup, hdl_header->startup, sizeof(ginfo->startup) - 1);
-        ginfo->startup[sizeof(ginfo->startup) - 1] = '\0';
-        ginfo->hdl_compat_flags = hdl_header->hdl_compat_flags;
-        ginfo->ops2l_compat_flags = hdl_header->ops2l_compat_flags;
-        ginfo->dma_type = hdl_header->dma_type;
-        ginfo->dma_mode = hdl_header->dma_mode;
-        ginfo->layer_break = hdl_header->layer1_start;
-        ginfo->disctype = (u8)hdl_header->discType;
-        ginfo->start_sector = game->lba;
-        ginfo->total_size_in_kb = game->size * 2; // size * 2048 / 1024 = 2x
-    } else
-        ret = -1;
-
-    return ret;
-}
 
 //-------------------------------------------------------------------------
 static struct GameDataEntry *GetGameListRecord(struct GameDataEntry *head, const char *partition)
@@ -181,6 +127,37 @@ static struct GameDataEntry *GetGameListRecord(struct GameDataEntry *head, const
     }
 
     return NULL;
+}
+
+int hddGetPartitionGDE(const char* name, struct GameDataEntry* out)
+{
+    iox_dirent_t dirent;
+    int fd, ret;
+
+    ret = -1;
+    if ((fd = fileXioDopen("hdd0:")) >= 0) 
+    {
+        while (fileXioDread(fd, &dirent) > 0) 
+        {
+            if ((dirent.stat.mode == HDL_FS_MAGIC) && ((dirent.stat.mode & APA_FLAG_SUB) != 0)) 
+            {
+                if (strcmp(dirent.name, name) != 0)
+                    continue;
+                
+                strncpy(out->id, dirent.name, APA_IDMAX);
+                out->id[APA_IDMAX] = '\0';
+                // Note: The APA specification states that there is a 4KB area used for storing the partition's information, before the extended attribute area.
+                out->lba = dirent.stat.private_5 + (HDL_GAME_DATA_OFFSET + 4096) / 512;
+                out->size = (dirent.stat.size / 4); // size in HDD sectors * (512 / 2048) = 0.25x
+                ret = 0;
+                break;
+            }
+        }
+
+        fileXioDclose(fd);
+    }
+
+    return ret;
 }
 
 int hddGetHDLGamelist(hdl_games_list_t *game_list)

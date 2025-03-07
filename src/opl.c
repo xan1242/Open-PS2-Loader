@@ -1855,55 +1855,55 @@ static void deferredAudioInit(void)
 // --------------------- Auto Loading -----------------------
 // ----------------------------------------------------------
 
-static void miniInit(int mode)
-{
-    int ret;
-
-    setDefaults();
-    configInit(NULL);
-
-    ioInit();
-    LOG_ENABLE();
-
-    if (mode == BDM_MODE) {
-        bdmInitSemaphore();
-
-        // Force load iLink & mx4sio modules.. we aren't using the gui so this is fine.
-        gEnableILK = 1; // iLink will break pcsx2 however.
-        gEnableMX4SIO = 1;
-        gEnableBdmHDD = 1;
-        bdmLoadModules();
-
-    } else if (mode == HDD_MODE) {
-        hddLoadModules();
-        hddLoadSupportModules();
-    }
-
-    InitConsoleRegionData();
-
-    ret = configReadMulti(CONFIG_ALL);
-    if (CONFIG_ALL & CONFIG_OPL) {
-        if (!(ret & CONFIG_OPL)) {
-            if (mode == BDM_MODE)
-                ret = checkLoadConfigBDM(CONFIG_ALL);
-            else if (mode == HDD_MODE)
-                ret = checkLoadConfigHDD(CONFIG_ALL);
-        }
-
-        if (ret & CONFIG_OPL) {
-            config_set_t *configOPL = configGetByType(CONFIG_OPL);
-
-            configGetInt(configOPL, CONFIG_OPL_PS2LOGO, &gPS2Logo);
-            configGetStrCopy(configOPL, CONFIG_OPL_EXIT_PATH, gExitPath, sizeof(gExitPath));
-            configGetInt(configOPL, CONFIG_OPL_HDD_SPINDOWN, &gHDDSpindown);
-            if (mode == BDM_MODE) {
-                configGetStrCopy(configOPL, CONFIG_OPL_BDM_PREFIX, gBDMPrefix, sizeof(gBDMPrefix));
-                configGetInt(configOPL, CONFIG_OPL_BDM_CACHE, &bdmCacheSize);
-            } else if (mode == HDD_MODE)
-                configGetInt(configOPL, CONFIG_OPL_HDD_CACHE, &hddCacheSize);
-        }
-    }
-}
+//static void miniInit(int mode)
+//{
+//    int ret;
+//
+//    setDefaults();
+//    configInit(NULL);
+//
+//    ioInit();
+//    LOG_ENABLE();
+//
+//    if (mode == BDM_MODE) {
+//        bdmInitSemaphore();
+//
+//        // Force load iLink & mx4sio modules.. we aren't using the gui so this is fine.
+//        gEnableILK = 1; // iLink will break pcsx2 however.
+//        gEnableMX4SIO = 1;
+//        gEnableBdmHDD = 1;
+//        bdmLoadModules();
+//
+//    } else if (mode == HDD_MODE) {
+//        hddLoadModules();
+//        hddLoadSupportModules();
+//    }
+//
+//    InitConsoleRegionData();
+//
+//    ret = configReadMulti(CONFIG_ALL);
+//    if (CONFIG_ALL & CONFIG_OPL) {
+//        if (!(ret & CONFIG_OPL)) {
+//            if (mode == BDM_MODE)
+//                ret = checkLoadConfigBDM(CONFIG_ALL);
+//            else if (mode == HDD_MODE)
+//                ret = checkLoadConfigHDD(CONFIG_ALL);
+//        }
+//
+//        if (ret & CONFIG_OPL) {
+//            config_set_t *configOPL = configGetByType(CONFIG_OPL);
+//
+//            configGetInt(configOPL, CONFIG_OPL_PS2LOGO, &gPS2Logo);
+//            configGetStrCopy(configOPL, CONFIG_OPL_EXIT_PATH, gExitPath, sizeof(gExitPath));
+//            configGetInt(configOPL, CONFIG_OPL_HDD_SPINDOWN, &gHDDSpindown);
+//            if (mode == BDM_MODE) {
+//                configGetStrCopy(configOPL, CONFIG_OPL_BDM_PREFIX, gBDMPrefix, sizeof(gBDMPrefix));
+//                configGetInt(configOPL, CONFIG_OPL_BDM_CACHE, &bdmCacheSize);
+//            } else if (mode == HDD_MODE)
+//                configGetInt(configOPL, CONFIG_OPL_HDD_CACHE, &hddCacheSize);
+//        }
+//    }
+//}
 
 void miniDeinit(config_set_t *configSet)
 {
@@ -1918,109 +1918,719 @@ void miniDeinit(config_set_t *configSet)
     configEnd();
 }
 
-static void autoLaunchHDDGame(char *argv[])
+static void miniNeutrinoInit(int mode, int bdm_type)
 {
-    char path[256];
-    config_set_t *configSet;
+    int ret;
 
-    miniInit(HDD_MODE);
+    setDefaults();
+    configInit(NULL);
 
-    gAutoLaunchGame = malloc(sizeof(hdl_game_info_t));
-    memset(gAutoLaunchGame, 0, sizeof(hdl_game_info_t));
+    ioInit();
+    LOG_ENABLE();
 
-    snprintf(gAutoLaunchGame->startup, sizeof(gAutoLaunchGame->startup), argv[1]);
-    gAutoLaunchGame->start_sector = strtoul(argv[2], NULL, 0);
-    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:%s", argv[3]);
+    if (mode == BDM_MODE) {
+        bdmInitSemaphore();
 
-    snprintf(path, sizeof(path), "%sCFG/%s.cfg", gHDDPrefix, gAutoLaunchGame->startup);
-    configSet = configAlloc(0, NULL, path);
-    configRead(configSet);
-
-    hddLaunchGame(NULL, -1, configSet);
-}
-
-static void autoLaunchBDMGame(char *argv[])
-{
-    char path[256];
-    config_set_t *configSet;
-
-    miniInit(BDM_MODE);
-
-    gAutoLaunchBDMGame = malloc(sizeof(base_game_info_t));
-    memset(gAutoLaunchBDMGame, 0, sizeof(base_game_info_t));
-
-    int nameLen;
-    int format = isValidIsoName(argv[1], &nameLen);
-    if (format == GAME_FORMAT_OLD_ISO) {
-        strncpy(gAutoLaunchBDMGame->name, &argv[1][GAME_STARTUP_MAX], nameLen);
-        gAutoLaunchBDMGame->name[nameLen] = '\0';
-        strncpy(gAutoLaunchBDMGame->extension, &argv[1][GAME_STARTUP_MAX + nameLen], sizeof(gAutoLaunchBDMGame->extension));
-        gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
-    } else {
-        strncpy(gAutoLaunchBDMGame->name, argv[1], nameLen);
-        gAutoLaunchBDMGame->name[nameLen] = '\0';
-        strncpy(gAutoLaunchBDMGame->extension, &argv[1][nameLen], sizeof(gAutoLaunchBDMGame->extension));
-        gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
-    }
-
-    snprintf(gAutoLaunchBDMGame->startup, sizeof(gAutoLaunchBDMGame->startup), argv[2]);
-
-    if (strcasecmp("DVD", argv[3]) == 0)
-        gAutoLaunchBDMGame->media = SCECdPS2DVD;
-    else if (strcasecmp("CD", argv[3]) == 0)
-        gAutoLaunchBDMGame->media = SCECdPS2CD;
-
-    gAutoLaunchBDMGame->format = format;
-    gAutoLaunchBDMGame->parts = 1; // ul not supported.
-
-    gAutoLaunchDeviceData = malloc(sizeof(bdm_device_data_t));
-    memset(gAutoLaunchDeviceData, 0, sizeof(bdm_device_data_t));
-
-    char apaDevicePrefix[8] = {0};
-    delay(8);
-    snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass0:");
-    // Loop through mass0: to mass4:
-    for (int i = 0; i <= 4; i++) {
-        snprintf(path, sizeof(path), "mass%d:", i);
-        int dir = fileXioDopen(path);
-
-        if (dir >= 0) {
-            fileXioIoctl2(dir, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, &gAutoLaunchDeviceData->bdmDriver, sizeof(gAutoLaunchDeviceData->bdmDriver) - 1);
-            fileXioIoctl2(dir, USBMASS_IOCTL_GET_DEVICE_NUMBER, NULL, 0, &gAutoLaunchDeviceData->massDeviceIndex, sizeof(gAutoLaunchDeviceData->massDeviceIndex));
-
-            if (!strcmp(gAutoLaunchDeviceData->bdmDriver, "ata") && strlen(gAutoLaunchDeviceData->bdmDriver) == 3) {
-                bdmResolveLBA_UDMA(gAutoLaunchDeviceData);
-                snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass%d:", i);
-                fileXioDclose(dir);
-                break; // Exit the loop if "ata" device is found
-            }
-
-            fileXioDclose(dir);
-        } else {
-            // Retry for mass0: only
-            if (i == 0) {
-                delay(6);
-                i--;
-            } else {
+        switch (bdm_type)
+        {
+            case BDM_TYPE_ATA:
+            {
+                gEnableBdmHDD = 1;
+                hddLoadModules();
                 break;
             }
+            case BDM_TYPE_SDC:
+            {
+                gEnableMX4SIO = 1;
+                break;
+            }
+            case BDM_TYPE_ILINK:
+            {
+                gEnableILK = 1;
+                break;
+            }
+            case BDM_TYPE_USB:
+            {
+                break;
+            }
+            default:
+            {
+                // load all modules by default...
+                gEnableILK = 1;
+                gEnableMX4SIO = 1;
+                gEnableBdmHDD = 1;
+                break;
+            }
+        }       
+
+        bdmLoadModules();
+
+    } else if (mode == HDD_MODE) {
+        hddLoadModules();
+        hddLoadSupportModules();
+    }
+
+    InitConsoleRegionData();
+
+    ret = configReadMulti(CONFIG_ALL);
+    if (!(ret & CONFIG_OPL)) {
+        if (mode == BDM_MODE)
+            ret = checkLoadConfigBDM(CONFIG_ALL);
+        else if (mode == HDD_MODE)
+            ret = checkLoadConfigHDD(CONFIG_ALL);
+    }
+
+    if (ret & CONFIG_OPL) {
+        config_set_t *configOPL = configGetByType(CONFIG_OPL);
+
+        configGetInt(configOPL, CONFIG_OPL_PS2LOGO, &gPS2Logo);
+        configGetStrCopy(configOPL, CONFIG_OPL_EXIT_PATH, gExitPath, sizeof(gExitPath));
+        configGetInt(configOPL, CONFIG_OPL_HDD_SPINDOWN, &gHDDSpindown);
+        if (mode == BDM_MODE) {
+            configGetStrCopy(configOPL, CONFIG_OPL_BDM_PREFIX, gBDMPrefix, sizeof(gBDMPrefix));
+            configGetInt(configOPL, CONFIG_OPL_BDM_CACHE, &bdmCacheSize);
+        } else if (mode == HDD_MODE)
+            configGetInt(configOPL, CONFIG_OPL_HDD_CACHE, &hddCacheSize);
+    }
+}
+
+//static void autoLaunchHDDGameByName(const char* game_part_name, const char* opl_part_name)
+//{
+//    char path[256];
+//    config_set_t *configSet;
+//    int res = 0;
+//
+//    miniInit(HDD_MODE);
+//
+//    gAutoLaunchGame = malloc(sizeof(hdl_game_info_t));
+//    memset(gAutoLaunchGame, 0, sizeof(hdl_game_info_t));
+//
+//    res = hddGetHDLGameInfoByPartName(game_part_name, gAutoLaunchGame);
+//    if (res != 0)
+//    {
+//        return;
+//    }
+//
+//    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:%s", opl_part_name);
+//
+//    snprintf(path, sizeof(path), "%sCFG/%s.cfg", gHDDPrefix, gAutoLaunchGame->startup);
+//    configSet = configAlloc(0, NULL, path);
+//    configRead(configSet);
+//
+//    hddLaunchGame(NULL, -1, configSet);
+//}
+
+//static void autoLaunchHDDGame(char *argv[])
+//{
+//    char path[256];
+//    config_set_t *configSet;
+//
+//    miniInit(HDD_MODE);
+//
+//    gAutoLaunchGame = malloc(sizeof(hdl_game_info_t));
+//    memset(gAutoLaunchGame, 0, sizeof(hdl_game_info_t));
+//
+//    snprintf(gAutoLaunchGame->startup, sizeof(gAutoLaunchGame->startup), argv[1]);
+//    gAutoLaunchGame->start_sector = strtoul(argv[2], NULL, 0);
+//    snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:%s", argv[3]);
+//
+//    snprintf(path, sizeof(path), "%sCFG/%s.cfg", gHDDPrefix, gAutoLaunchGame->startup);
+//    configSet = configAlloc(0, NULL, path);
+//    configRead(configSet);
+//
+//    hddLaunchGame(NULL, -1, configSet);
+//}
+
+//static void autoLaunchBDMGame(char *argv[])
+//{
+//    char path[256];
+//    config_set_t *configSet;
+//
+//    miniInit(BDM_MODE);
+//
+//    gAutoLaunchBDMGame = malloc(sizeof(base_game_info_t));
+//    memset(gAutoLaunchBDMGame, 0, sizeof(base_game_info_t));
+//
+//    int nameLen;
+//    int format = isValidIsoName(argv[1], &nameLen);
+//    if (format == GAME_FORMAT_OLD_ISO) {
+//        strncpy(gAutoLaunchBDMGame->name, &argv[1][GAME_STARTUP_MAX], nameLen);
+//        gAutoLaunchBDMGame->name[nameLen] = '\0';
+//        strncpy(gAutoLaunchBDMGame->extension, &argv[1][GAME_STARTUP_MAX + nameLen], sizeof(gAutoLaunchBDMGame->extension));
+//        gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
+//    } else {
+//        strncpy(gAutoLaunchBDMGame->name, argv[1], nameLen);
+//        gAutoLaunchBDMGame->name[nameLen] = '\0';
+//        strncpy(gAutoLaunchBDMGame->extension, &argv[1][nameLen], sizeof(gAutoLaunchBDMGame->extension));
+//        gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
+//    }
+//
+//    snprintf(gAutoLaunchBDMGame->startup, sizeof(gAutoLaunchBDMGame->startup), argv[2]);
+//
+//    if (strcasecmp("DVD", argv[3]) == 0)
+//        gAutoLaunchBDMGame->media = SCECdPS2DVD;
+//    else if (strcasecmp("CD", argv[3]) == 0)
+//        gAutoLaunchBDMGame->media = SCECdPS2CD;
+//
+//    gAutoLaunchBDMGame->format = format;
+//    gAutoLaunchBDMGame->parts = 1; // ul not supported.
+//
+//    gAutoLaunchDeviceData = malloc(sizeof(bdm_device_data_t));
+//    memset(gAutoLaunchDeviceData, 0, sizeof(bdm_device_data_t));
+//
+//    char apaDevicePrefix[8] = {0};
+//    delay(8);
+//    snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass0:");
+//    // Loop through mass0: to mass4:
+//    for (int i = 0; i <= 4; i++) {
+//        snprintf(path, sizeof(path), "mass%d:", i);
+//        int dir = fileXioDopen(path);
+//
+//        if (dir >= 0) {
+//            fileXioIoctl2(dir, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, &gAutoLaunchDeviceData->bdmDriver, sizeof(gAutoLaunchDeviceData->bdmDriver) - 1);
+//            fileXioIoctl2(dir, USBMASS_IOCTL_GET_DEVICE_NUMBER, NULL, 0, &gAutoLaunchDeviceData->massDeviceIndex, sizeof(gAutoLaunchDeviceData->massDeviceIndex));
+//
+//            if (!strcmp(gAutoLaunchDeviceData->bdmDriver, "ata") && strlen(gAutoLaunchDeviceData->bdmDriver) == 3) {
+//                bdmResolveLBA_UDMA(gAutoLaunchDeviceData);
+//                snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass%d:", i);
+//                fileXioDclose(dir);
+//                break; // Exit the loop if "ata" device is found
+//            }
+//
+//            fileXioDclose(dir);
+//        } else {
+//            // Retry for mass0: only
+//            if (i == 0) {
+//                delay(6);
+//                i--;
+//            } else {
+//                break;
+//            }
+//        }
+//        delay(6);
+//    }
+//
+//    if (gBDMPrefix[0] != '\0') {
+//        snprintf(path, sizeof(path), "%s%s/CFG/%s.cfg", apaDevicePrefix, gBDMPrefix, gAutoLaunchBDMGame->startup);
+//        snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s%s/", apaDevicePrefix, gBDMPrefix);
+//    } else {
+//        snprintf(path, sizeof(path), "%sCFG/%s.cfg", apaDevicePrefix, gAutoLaunchBDMGame->startup);
+//        snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s", apaDevicePrefix);
+//    }
+//
+//
+//    configSet = configAlloc(0, NULL, path);
+//    configRead(configSet);
+//
+//    bdmLaunchGame(NULL, -1, configSet);
+//}
+
+// #TODO move all of this neutrino stuff into its own code unit!
+
+static int determineNeutrinoModeFromPath(const char* path, int* out_mode)
+{
+    size_t devname_len;
+    char* colon = strchr(path, ':');
+    if (colon == NULL)
+        return 1;
+
+    devname_len = colon - path;   
+
+    int found_one = 0;
+
+    // #TODO udpbd and mmce
+    if (strstr(path, "mass") != NULL)
+    {
+        *out_mode = BDM_MODE;
+    }
+    else if (strstr(path, "hdl") != NULL)
+    {
+        *out_mode = HDD_MODE;
+    }
+
+    if (!found_one)
+        return 1;
+    
+    return 0;
+}
+
+static int autoLaunchNeutrino(neutrino_config_t* cfg)
+{
+    char path[256];
+    config_set_t *configSet;
+
+    // #TODO proper error codes maybe?
+    if (cfg->filename == NULL)
+        return -1;
+    if (cfg->mode < 0)
+    {
+        // if the mode is unknown, try to determine it from the filename
+        if (determineNeutrinoModeFromPath(cfg->filename, &cfg->mode))
+            return -2;
+        if (cfg->mode == HDD_MODE)
+            cfg->bdm_type = BDM_TYPE_ATA;
+    }
+    if (cfg->bdm_type < 0)
+        return -3;
+    
+    const char* filename_no_prefix = strchr(cfg->filename, ':');
+    if (filename_no_prefix == NULL)
+        filename_no_prefix = cfg->filename;
+    else
+        filename_no_prefix++;
+
+    if ((filename_no_prefix[0] == '/') || (filename_no_prefix[0] == '\\'))
+        filename_no_prefix++;
+
+    PREINIT_LOG("autoLaunchNeutrino: " "Config: mode: %d | bdm_type: %d | media_type: %d | filename: %s\n", cfg->mode, cfg->bdm_type, cfg->media_type, cfg->filename);
+
+    miniNeutrinoInit(cfg->mode, cfg->bdm_type);
+
+    switch (cfg->mode)
+    {       
+        case HDD_MODE:
+        {
+            int hdd_get_res = 0;
+
+            gAutoLaunchGame = malloc(sizeof(hdl_game_info_t));
+            memset(gAutoLaunchGame, 0, sizeof(hdl_game_info_t));
+
+            hdd_get_res = hddGetHDLGameInfoByPartName(filename_no_prefix, gAutoLaunchGame);
+            if (hdd_get_res != 0)
+            {
+                LOG("autoLaunchNeutrino: " "ERROR: Failed to get HDL game info for game: %s\n", cfg->filename);
+                miniDeinit(configSet);
+                return -4;
+            }
+
+            if (cfg->opl_part_name)
+                snprintf(gOPLPart, sizeof(gOPLPart), "hdd0:%s", cfg->opl_part_name);           
+
+            snprintf(path, sizeof(path), "%sCFG/%s.cfg", gHDDPrefix, gAutoLaunchGame->startup);
+            configSet = configAlloc(0, NULL, path);
+            configRead(configSet);
+
+            break;
         }
-        delay(6);
+        case BDM_MODE:
+        {
+            int num_bdm_devices = 1;
+            gAutoLaunchBDMGame = malloc(sizeof(base_game_info_t));
+            memset(gAutoLaunchBDMGame, 0, sizeof(base_game_info_t));
+
+            if (gEnableBdmHDD)
+                num_bdm_devices++;
+            if (gEnableMX4SIO)
+                num_bdm_devices++;
+            if (gEnableILK)
+                num_bdm_devices++;
+
+            int nameLen;
+            int format = isValidIsoName(filename_no_prefix, &nameLen);
+            if (format == GAME_FORMAT_OLD_ISO) {
+                strncpy(gAutoLaunchBDMGame->name, &filename_no_prefix[GAME_STARTUP_MAX], nameLen);
+                gAutoLaunchBDMGame->name[nameLen] = '\0';
+                strncpy(gAutoLaunchBDMGame->extension, &filename_no_prefix[GAME_STARTUP_MAX + nameLen], sizeof(gAutoLaunchBDMGame->extension));
+                gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
+            } else {
+                strncpy(gAutoLaunchBDMGame->name, filename_no_prefix, nameLen);
+                gAutoLaunchBDMGame->name[nameLen] = '\0';
+                strncpy(gAutoLaunchBDMGame->extension, &filename_no_prefix[nameLen], sizeof(gAutoLaunchBDMGame->extension));
+                gAutoLaunchBDMGame->extension[sizeof(gAutoLaunchBDMGame->extension) - 1] = '\0';
+            }
+
+            // #TODO add autodetection by size !!!
+            if (cfg->media_type < 0)
+                gAutoLaunchBDMGame->media = SCECdPS2DVD;
+            else
+                gAutoLaunchBDMGame->media = cfg->media_type;
+        
+            gAutoLaunchBDMGame->format = format;
+            gAutoLaunchBDMGame->parts = 1; // ul not supported.
+        
+            gAutoLaunchDeviceData = malloc(sizeof(bdm_device_data_t));
+            memset(gAutoLaunchDeviceData, 0, sizeof(bdm_device_data_t));
+        
+            char apaDevicePrefix[8] = {0};
+            delay(8);
+            snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass0:");
+            // Loop through mass0 to mass(num_bdm_devices - 1)
+            for (int i = 0; i < num_bdm_devices; i++) {
+                snprintf(path, sizeof(path), "mass%d:", i);
+                int dir = fileXioDopen(path);
+                
+                // #TODO this is ultra jank -- check it out again later... maybe even eliminate it considering we can specify which modules load exactly now...
+                if (dir >= 0) {
+                    fileXioIoctl2(dir, USBMASS_IOCTL_GET_DRIVERNAME, NULL, 0, &gAutoLaunchDeviceData->bdmDriver, sizeof(gAutoLaunchDeviceData->bdmDriver) - 1);
+                    fileXioIoctl2(dir, USBMASS_IOCTL_GET_DEVICE_NUMBER, NULL, 0, &gAutoLaunchDeviceData->massDeviceIndex, sizeof(gAutoLaunchDeviceData->massDeviceIndex));
+                
+                    if (strncmp(gAutoLaunchDeviceData->bdmDriver, "ata", 3) == 0) {
+                        bdmResolveLBA_UDMA(gAutoLaunchDeviceData);
+                        snprintf(apaDevicePrefix, sizeof(apaDevicePrefix), "mass%d:", i);
+                        fileXioDclose(dir);
+                        break; // Exit the loop if "ata" device is found
+                    }
+                
+                    fileXioDclose(dir);
+                } else {
+                    // Retry for mass0: only
+                    if (i == 0) {
+                        delay(6);
+                        i--;
+                    } else {
+                        break;
+                    }
+                }
+                delay(6);
+            }
+
+            if (gBDMPrefix[0] != '\0') {
+                snprintf(path, sizeof(path), "%s%s/%s", apaDevicePrefix, gBDMPrefix, filename_no_prefix);
+                snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s%s/", apaDevicePrefix, gBDMPrefix);
+            } else {
+                snprintf(path, sizeof(path), "%s/%s", apaDevicePrefix, filename_no_prefix);
+                snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s", apaDevicePrefix);
+            }
+
+            if (getStartupFromISO(path, gAutoLaunchBDMGame->startup) != 0)
+            {
+                LOG("autoLaunchNeutrino: " "ERROR: Failed to get startup from ISO for game: %s\n", cfg->filename);
+                miniDeinit(configSet);
+                return -4;
+            }
+
+            if (gBDMPrefix[0] != '\0') {
+                snprintf(path, sizeof(path), "%s%s/CFG/%s.cfg", apaDevicePrefix, gBDMPrefix, gAutoLaunchBDMGame->startup);
+            } else {
+                snprintf(path, sizeof(path), "%sCFG/%s.cfg", apaDevicePrefix, gAutoLaunchBDMGame->startup);
+            }
+            
+            configSet = configAlloc(0, NULL, path);
+            configRead(configSet);
+
+            break;
+        }
+        default:
+        {
+            LOG("autoLaunchNeutrino: " "Unknown mode: %d\n", cfg->mode);
+            miniDeinit(configSet);
+            return -4;
+        }
     }
 
-    if (gBDMPrefix[0] != '\0') {
-        snprintf(path, sizeof(path), "%s%s/CFG/%s.cfg", apaDevicePrefix, gBDMPrefix, gAutoLaunchBDMGame->startup);
-        snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s%s/", apaDevicePrefix, gBDMPrefix);
-    } else {
-        snprintf(path, sizeof(path), "%sCFG/%s.cfg", apaDevicePrefix, gAutoLaunchBDMGame->startup);
-        snprintf(gAutoLaunchDeviceData->bdmPrefix, sizeof(gAutoLaunchDeviceData->bdmPrefix), "%s", apaDevicePrefix);
+    // command line config overrides
+    if (cfg->logo)
+    {
+        gPS2Logo = 1;
+    }
+    if (cfg->dbc)
+    {
+        gEnableDebug = 1;
+    }
+
+    switch (cfg->mode)
+    {       
+        case HDD_MODE:
+        {
+            LOG("autoLaunchNeutrino: " "Launching HDD game: %s\n", cfg->filename);
+            hddLaunchGame(NULL, -1, configSet);
+            break;
+        }
+        case BDM_MODE:
+        {
+            LOG("autoLaunchNeutrino: " "Launching BDM game: %s\n", cfg->filename);
+            bdmLaunchGame(NULL, -1, configSet);
+            break;
+        }
+        //default:
+        //{
+        //    LOG("autoLaunchNeutrino: " "Unknown mode: %d\n", cfg->mode);
+        //    return -4;
+        //}
     }
 
 
-    configSet = configAlloc(0, NULL, path);
-    configRead(configSet);
+    return 0;
+}
 
-    bdmLaunchGame(NULL, -1, configSet);
+static int procNeutrinoArgs(neutrino_args_t* args, neutrino_config_t* out_cfg)
+{
+    out_cfg->mode = -1;
+    out_cfg->bdm_type = -1;
+    //out_cfg->media_type = -1;
+    out_cfg->media_type = SCECdPS2DVD;
+    out_cfg->opl_part_name = NULL;
+    out_cfg->filename = NULL;
+
+    if (args->bsd)
+    {
+        // determine mode
+        if (strncmp(args->bsd, "ata", args->bsd_len) == 0)
+        {
+            // default to BDM
+            out_cfg->mode = BDM_MODE;
+            out_cfg->bdm_type = BDM_TYPE_ATA;
+        }
+        else if (strncmp(args->bsd, "usb", args->bsd_len) == 0)
+        {
+            out_cfg->mode = BDM_MODE;
+            out_cfg->bdm_type = BDM_TYPE_USB;
+        }
+        else if (strncmp(args->bsd, "mx4sio", args->bsd_len) == 0)
+        {
+            out_cfg->mode = BDM_MODE;
+            out_cfg->bdm_type = BDM_TYPE_SDC; // is this correct?
+        }
+        // #TODO: figure this one out later...
+        //else if (strncmp(args->bsd, "udpbd", args->bsd_len) == 0)
+        //{
+        //    out_cfg->mode = BDM_MODE;
+        //    out_cfg->bdm_type = BDM_TYPE_UNKNOWN;
+        //}
+        else if (strncmp(args->bsd, "ilink", args->bsd_len) == 0)
+        {
+            out_cfg->mode = BDM_MODE;
+            out_cfg->bdm_type = BDM_TYPE_ILINK;
+        }
+        // #TODO: figure this one out later...
+        //else if (strncmp(args->bsd, "mmce", args->bsd_len) == 0)
+        //{
+        //    out_cfg->mode = BDM_MODE;
+        //    out_cfg->bdm_type = BDM_TYPE_SDC; // is this correct?
+        //}
+        else
+        {
+            PREINIT_LOG("procNeutrinoArgs: " "Unknown bsd value: %s\n", args->bsd);
+        }
+    }
+
+    if (args->bsdfs)
+    {
+        if (strncmp(args->bsdfs, "exfat", args->bsdfs_len) == 0)
+        {
+            if (out_cfg->bdm_type == BDM_TYPE_ATA)
+            {
+                out_cfg->mode = BDM_MODE;
+            }
+        }
+        else if (strncmp(args->bsdfs, "hdl", args->bsdfs_len) == 0)
+        {
+            // APA HDD only for this fs type on OPL
+            if (out_cfg->mode != HDD_MODE)
+            {
+                out_cfg->mode = HDD_MODE;
+                out_cfg->bdm_type = BDM_TYPE_ATA;
+            }
+        }
+        else if (strncmp(args->bsdfs, "bd", args->bsdfs_len) == 0)
+        {
+            // failsafe
+            out_cfg->mode = BDM_MODE;
+        }
+        else
+        {
+            PREINIT_LOG("procNeutrinoArgs: " "Unknown bd value: %s\n", args->bsd);
+        }
+    }
+
+    if (args->dvd)
+    {
+        if ((strncmp(args->dvd, "no", args->dvd_len) == 0) || (strncmp(args->dvd, "esr", args->dvd_len) == 0))
+        {
+            PREINIT_LOG("procNeutrinoArgs: " "Unsupported dvd value: %s\n", args->dvd);
+        }
+        else
+        {
+            out_cfg->filename = args->dvd;
+        }
+    }
+
+    if (args->mc0)
+    {
+        // #TODO
+        PREINIT_LOG("procNeutrinoArgs: " "mc0 option unimplemented: %s\n", args->mc0);
+    }
+
+    if (args->mc1)
+    {
+        // #TODO
+        PREINIT_LOG("procNeutrinoArgs: " "mc1 option unimplemented: %s\n", args->mc1);
+    }
+
+    if (args->elf)
+    {
+        // #TODO implement elf launching
+        PREINIT_LOG("procNeutrinoArgs: " "elf option unimplemented: %s\n", args->elf);
+    }
+
+    if (args->mt)
+    {
+        if ((strncmp(args->mt, "cd", args->mt_len) == 0))
+        {
+            out_cfg->media_type = SCECdPS2CD;
+        }
+        else if ((strncmp(args->mt, "dvd", args->mt_len) == 0))
+        {
+            out_cfg->media_type = SCECdPS2DVD;
+        }
+        else
+        {
+            PREINIT_LOG("procNeutrinoArgs: " "Unknown mt value: %s\n", args->mt);
+        }
+    }
+
+    if (args->gc)
+    {
+        // #TODO implement gc compat options
+        PREINIT_LOG("procNeutrinoArgs: " "gc option unimplemented: %s\n", args->gc);
+    }
+
+    if (args->gsm)
+    {
+        // #TODO implement gsm options
+        PREINIT_LOG("procNeutrinoArgs: " "gsm option unimplemented: %s\n", args->gsm);
+    }
+
+    if (args->oplpart)
+    {
+        out_cfg->opl_part_name= args->oplpart;
+    }
+
+
+    return 0;
+}
+
+static int procNeutrinoCmdLine(int argc, char* argv[])
+{
+    int found_one = 0;
+    neutrino_args_t neutrino_args;
+    neutrino_config_t neutrino_config;
+    memset(&neutrino_args, 0, sizeof(neutrino_args));
+    memset(&neutrino_config, 0, sizeof(neutrino_config));
+
+    // iterate thru args
+    for (int i = 1; i < argc; i++)
+    {
+        if ((argv[i][0] != '-'))
+        {
+            PREINIT_LOG("procNeutrinoCmdLine: " "Ignoring invalid arg[%d] = %s\n", i, argv[i]);
+            continue;
+        }
+
+        char* equals = strchr(argv[i], '=');
+
+        if (equals == NULL)
+        {
+            if (strcmp(&argv[i][1], "dbc"))
+            {
+                neutrino_config.dbc = 1;
+                continue;
+            } 
+            else if (strcmp(&argv[i][1], "logo"))
+            {
+                neutrino_config.logo = 1;
+                continue;
+            }
+
+            else if (strcmp(&argv[i][1], "-b"))
+            {
+                neutrino_config.elf_passthru_argv = &argv[i + 1];
+                neutrino_config.elf_passthru_argc = argc - i; // #TODO check this
+                break;
+            }
+
+            PREINIT_LOG("procNeutrinoCmdLine: " "Ignoring invalid arg[%d] = %s\n", i, argv[i]);
+            continue;
+        }
+
+        char* arg_key = &argv[i][1];
+        size_t arg_keylen = equals - arg_key;
+
+        char* arg_val = &equals[1];
+        size_t arg_vallen = strlen(arg_val);
+
+        found_one = 1;
+        
+        if (strncmp(arg_key, "bsd", arg_keylen) == 0)
+        {
+            neutrino_args.bsd = arg_val;
+            neutrino_args.bsd_len = arg_vallen;
+            continue;
+        }
+        
+        if (strncmp(arg_key, "bsdfs", arg_keylen) == 0)
+        {
+            neutrino_args.bsdfs = arg_val;
+            neutrino_args.bsdfs_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "dvd", arg_keylen) == 0)
+        {
+            neutrino_args.dvd = arg_val;
+            neutrino_args.dvd_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "mc0", arg_keylen) == 0)
+        {
+            neutrino_args.mc0 = arg_val;
+            neutrino_args.mc0_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "mc1", arg_keylen) == 0)
+        {
+            neutrino_args.mc1 = arg_val;
+            neutrino_args.mc1_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "elf", arg_keylen) == 0)
+        {
+            neutrino_args.elf = arg_val;
+            neutrino_args.elf_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "mt", arg_keylen) == 0)
+        {
+            neutrino_args.mt = arg_val;
+            neutrino_args.mt_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "gc", arg_keylen) == 0)
+        {
+            neutrino_args.gc = arg_val;
+            neutrino_args.gc_len = arg_vallen;
+            continue;
+        }
+
+        if (strncmp(arg_key, "gsm", arg_keylen) == 0)
+        {
+            neutrino_args.gsm = arg_val;
+            neutrino_args.gsm_len = arg_vallen;
+            continue;
+        }
+
+        // custom OPL arg
+        if (strncmp(arg_key, "oplpart", arg_keylen) == 0)
+        {
+            neutrino_args.oplpart = arg_val;
+            neutrino_args.oplpart_len = arg_vallen;
+            continue;
+        }
+
+        PREINIT_LOG("procNeutrinoCmdLine: " "Unsupported/invalid option: arg[%d] = %s\n", i, argv[i]);
+    }
+
+    if (!found_one)
+        return 1;
+
+    procNeutrinoArgs(&neutrino_args, &neutrino_config);
+
+    return autoLaunchNeutrino(&neutrino_config);
 }
 
 // --------------------- Main --------------------
@@ -2039,22 +2649,30 @@ int main(int argc, char *argv[])
     reset();
     ResetDeckardXParams();
 
-    if (argc >= 5) {
-        /* argv[0] boot path
-           argv[1] game->startup
-           argv[2] str to u32 game->start_sector
-           argv[3] opl partition read from hdd0:__common/OPL/conf_hdd.cfg
-           argv[4] "mini" */
-        if (!strcmp(argv[4], "mini"))
-            autoLaunchHDDGame(argv);
-        /* argv[0] boot path
-           argv[1] file name (including extention)
-           argv[2] game->startup
-           argv[3] game->media ("CD" / "DVD")
-           argv[4] "bdm" */
-        if (!strcmp(argv[4], "bdm"))
-            autoLaunchBDMGame(argv);
-    }
+    if (procNeutrinoCmdLine(argc, argv) == 0)
+        return 0;
+
+    //if (argv[1][0] == '-' && argv[1][1] == 'm')
+    //{
+    //    autoLaunchHDDGameByName(argv[2], argv[3]);
+    //}
+
+    //if (argc >= 5) {
+    //    /* argv[0] boot path
+    //       argv[1] game->startup
+    //       argv[2] str to u32 game->start_sector
+    //       argv[3] opl partition read from hdd0:__common/OPL/conf_hdd.cfg
+    //       argv[4] "mini" */
+    //    if (!strcmp(argv[4], "mini"))
+    //        autoLaunchHDDGame(argv);
+    //    /* argv[0] boot path
+    //       argv[1] file name (including extention)
+    //       argv[2] game->startup
+    //       argv[3] game->media ("CD" / "DVD")
+    //       argv[4] "bdm" */
+    //    if (!strcmp(argv[4], "bdm"))
+    //        autoLaunchBDMGame(argv);
+    //}
 
     init();
 
