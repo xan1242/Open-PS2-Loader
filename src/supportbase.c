@@ -282,7 +282,7 @@ static int queryISOGameListCache(const struct game_cache_list *cache, base_game_
     return ENOENT;
 }
 
-int getStartupFromISO(const char* fullpath, char* out_startup)
+int getStartupFromISO(const char *fullpath, char *out_startup)
 {
     // need to mount and read SYSTEM.CNF
     int MountFD = fileXioMount("iso:", fullpath, FIO_MT_RDONLY);
@@ -713,8 +713,7 @@ void sbRebuildULCfg(base_game_info_t **list, const char *prefix, int gamecount, 
 
 static void sbCreatePath_name(const base_game_info_t *game, char *path, const char *prefix, const char *sep, int part, const char *game_name)
 {
-    if (gAutoLaunchBDMGame)
-    {
+    if (gAutoLaunchBDMGame) {
         // ignore OPL pathing jank on BDM auto launch...
         snprintf(path, 256, "%s%s%s", prefix, game->name, game->extension);
         return;

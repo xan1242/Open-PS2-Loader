@@ -129,21 +129,18 @@ static struct GameDataEntry *GetGameListRecord(struct GameDataEntry *head, const
     return NULL;
 }
 
-int hddGetPartitionGDE(const char* name, struct GameDataEntry* out)
+int hddGetPartitionGDE(const char *name, struct GameDataEntry *out)
 {
     iox_dirent_t dirent;
     int fd, ret;
 
     ret = -1;
-    if ((fd = fileXioDopen("hdd0:")) >= 0) 
-    {
-        while (fileXioDread(fd, &dirent) > 0) 
-        {
-            if ((dirent.stat.mode == HDL_FS_MAGIC) && ((dirent.stat.mode & APA_FLAG_SUB) != 0)) 
-            {
+    if ((fd = fileXioDopen("hdd0:")) >= 0) {
+        while (fileXioDread(fd, &dirent) > 0) {
+            if ((dirent.stat.mode == HDL_FS_MAGIC) && ((dirent.stat.mode & APA_FLAG_SUB) != 0)) {
                 if (strcmp(dirent.name, name) != 0)
                     continue;
-                
+
                 strncpy(out->id, dirent.name, APA_IDMAX);
                 out->id[APA_IDMAX] = '\0';
                 // Note: The APA specification states that there is a 4KB area used for storing the partition's information, before the extended attribute area.

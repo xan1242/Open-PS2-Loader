@@ -385,18 +385,17 @@ int hddGetHDLGameInfo(struct GameDataEntry *game, hdl_game_info_t *ginfo)
     return ret;
 }
 
-int hddGetHDLGameInfoByPartName(const char* partition_name, hdl_game_info_t *ginfo)
+int hddGetHDLGameInfoByPartName(const char *partition_name, hdl_game_info_t *ginfo)
 {
     int res = 0;
     struct GameDataEntry e;
 
     memset(&e, 0, sizeof(e));
     res = hddGetPartitionGDE(partition_name, &e);
-    if (res != 0)
-    {
-        return res;  
+    if (res != 0) {
+        return res;
     }
-    
+
     return hddGetHDLGameInfo(&e, ginfo);
 }
 

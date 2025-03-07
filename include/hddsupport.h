@@ -60,7 +60,7 @@ int hddSetHDLGameInfo(hdl_game_info_t *ginfo);
 int hddDeleteHDLGame(hdl_game_info_t *ginfo);
 
 int hddGetHDLGameInfo(struct GameDataEntry *game, hdl_game_info_t *ginfo);
-int hddGetHDLGameInfoByPartName(const char* partition_name, hdl_game_info_t *ginfo);
+int hddGetHDLGameInfoByPartName(const char *partition_name, hdl_game_info_t *ginfo);
 
 void hddInit();
 item_list_t *hddGetObject(int initOnly);

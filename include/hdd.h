@@ -117,7 +117,7 @@ int hddReadSectors(u32 lba, u32 nsectors, void *buf);
 // Array should be APA_MAXSUB+1 entries.
 int hddGetPartitionInfo(const char *name, apa_sub_t *parts);
 
-int hddGetPartitionGDE(const char* name, struct GameDataEntry* out);
+int hddGetPartitionGDE(const char *name, struct GameDataEntry *out);
 
 // Array should be max entries.
 int hddGetFileBlockInfo(const char *name, const apa_sub_t *subs, pfs_blockinfo_t *blocks, int max);
